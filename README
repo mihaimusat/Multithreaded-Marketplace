@@ -1,0 +1,74 @@
+Musat Mihai-Robert
+Grupa 332CB
+
+===========================================Tema 1 ASC - Marketplace===========================================
+
+Pentru implementarea acestei teme, am pornit de la scheletul de cod oferit si de la enuntul prezentat pe
+site-ul de cursuri.Voi detalia acum fiecare dintre cele trei clase pe care le-am completat, atat din punct
+de vedere al ideii de implementare, cat si al elementelor de sincronizare folosite.
+
+Consumer
+--------
+Dupa ce am completat constructorul cu campurile aferente, am trecut la implementarea metodei run() care va 
+fi executata de fiecare consumator in parte.Fiecare dintre acestia parcurge lista de carturi primite ca 
+input, care este de fapt o lista de operatii pe care trebuie sa le realizeze, si un cos de cumparaturi 
+care are un id unic, si este intors de metoda new_cart() din Marketplace.Pentru fiecare operatie
+din aceasta lista, consumatorul extrage tipul operatiei, id-ul produsului si cantitatea de produs pe care
+vrea sa o consume.In functie de tipul operatiei, pentru fiecare produs in parte, consumatorul poate sa
+adauge un produs in cart cat timp cantitatea din acel produs nu este nula si add_to_cart() nu intoarce false
+(daca add_to_cart() intoarce false, atunci consumatorul trebuie sa astepte un timp pana cand sa incerce
+din nou sa adauge produsul in cart deoarece nu exista in Marketplace, lucru realizat prin intermediul acelui 
+sleep).De asemenea, consumatorul poate sa scoata un produs din cosul de cumparaturi atata timp cat cantitatea 
+din produsul respectiv nu este nula prin intermediul metodei remove_from_cart().La finalul fiecarei operatii 
+executate, fie aceasta de tip add sau remove, se plaseaza comanda folosind place_order() si este afisata lista 
+de produse cumparate de consumatorul curent.Acest procedeu continua pana cand a fost parcursa toata lista 
+de operatii pe care consumatorul le-a primit ca input.
+
+Producer
+--------
+Dupa ce am completat constructorul cu campurile aferente, am trecut la implementarea metodei run() care va fi
+executata de fiecare producator in parte.Un producator mai intai obtine un id unic, prin apelarea functiei 
+register_producer() oferita de Marketplace si apoi va realiza urmatoarele operatii in aceasta ordine intr-o
+bucla infinita: pentru fiecare produs din lista de produse, extrag id-ul produsului, cantitatea produsa si timpul 
+pe care trebuie sa il astept pentru a produce din nou produsul respectiv.Apoi, cat timp cantitatea nu este nula, 
+producatorul asteapta sa produca din nou si cat timp metoda publish() din Marketplace nu intoarce false, publica 
+noul produs in Marketplace(intre doua intervale de timp in care un producator genereaza un nou produs, acesta 
+trebuie sa astepte timpul specificat anterior, iar daca metoda publish() intoarce false, atunci producatorul 
+trebuie sa astepte un timp pana cand sa incerce sa publice din nou produsul in Marketplace, lucruri realizate 
+prin cele doua sleep-uri).
+
+Marketplace
+-----------
+Aceasta clasa functioneaza ca un intermediar intre producatori si consumatori si reprezinta partea centrala
+a temei.Ca structuri de date am ales sa folosesc doua dictionare:
+
+1) carts -> in care retin drept chei cart_id si drept valori liste de perechi (producer_id, products), unde 
+products este lista de produse asociate producer_id.
+2) producers -> in care retin drept chei producer_id si drept valori lista de produse asociata producatorului
+
+In ceea ce priveste elementele de sincronizare, am folosit doua lock-uri pentru a ma asigura ca atunci cand
+incrementez id-ul unui cart sau id-ul unui producator in cazul functiilor new_cart() si register_producer(),
+acest lucru se realizeaza in mod independent de fiecare thread consumer, respectiv producer in parte si
+rezultatul retinut de acestea la fiecare moment de timp este corect.In fapt, acestea sunt singurele elemente
+de sincronizare folosite deoarece restul operatiilor cu liste sau dictionare sunt thread-safe in Python.
+
+Dupa aceea, am implementat metoda publish() prin care un producator (producer_id) poate sa publice un nou
+produs (product) in Marketplace.Pentru aceasta, extrag lista de produse asociata producer_id din dictionarul
+mentionat mai sus si verific daca lungimea listei este mai mica decat numarul maxim de produse pe care poate
+sa le publice un producator.In caz afirmativ, adaug produsul in aceasta lista si in caz negativ intorc direct 
+false, deoarece la momentul curent nu mai pot sa public un nou produs.
+
+Apoi, am implementat cele doua metode add_to_cart() si remove_from_cart() care adauga respectiv extrag un produs
+dintr-un anumit cart.In ceea ce priveste metoda add_to_cart(), parcurg dictionarul in care retin perechi 
+cheie-valoare de forma <producer_id:product_list> si verific daca produsul dat ca argument se afla sau nu 
+in lista de produse a fiecarui producer identificat in mod unic prin producer_id.Daca produsul nu se gaseste
+in aceasta lista, atunci sar la iteratia urmatoare, iar altfel, il scot din lista de produse si adaug o noua
+pereche drept valoare pentru cheia care are cart_id dat ca parametru in dictionarul carts: (producer_id, product)
+si intorc true.La final, daca nu am gasit product in lista si nici nu am gasit un producer_id valid, intorc false.
+Metoda remove_from_cart() este similara metodei descrise anterior, cu mentiunea ca cele doua operatii asupra 
+dictionarelor se realizeaza invers si procedeul se opreste la prima intrare pe care am gasit-o, asigurandu-se
+faptul ca eliminarea unui produs din cart se face pentru un singur produs de acel tip si nu pentru toate
+produsele de acel tip.
+Ultima metoda implementata a fost o metoda folosita de clasa Consumer, si anume place_order(), in care pur
+si simplu colectez intr-o lista toate produsele din dictionarul carts cautand dupa intrarea care are
+cheia cart_id egala cu id-ul dat ca parametru.
